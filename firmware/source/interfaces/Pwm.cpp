@@ -8,6 +8,11 @@
 #include "hardware/pwm.h"
 #include "hardware/clocks.h"
 
+// External functions defined in main.cpp for PWM slice management
+extern bool is_pwm_slice_busy(uint slice_num);
+extern bool allocate_pwm_slice(uint slice_num);
+extern void release_pwm_slice(uint slice_num);
+
 Pwm::Pwm() {
     setInterfaceState(InterfaceState::INTIALIZED);
 }
@@ -55,15 +60,32 @@ CmdStatus Pwm::initPwm(uint8_t const *cmd, uint8_t response[64]) {
     response[2] = static_cast<uint8_t>(gpio);
     response[3] = static_cast<uint8_t>(sliceNb);
     response[4] = static_cast<uint8_t>(channel);
+    response[5] = 0x00; // Default no error
 
     Slice &slice = _sliceArray[sliceNb];
+
+    // Check if the specific channel on this slice is already used *by this PWM instance*
     if(slice.isGpioChannelUsed(channel)) {
-        response[5] = 0x01;
+        response[5] = 0x01; // Error: GPIO/Channel already used by this PWM instance
         return CmdStatus::NOK;
     }
 
+    // --- Resource Allocation ---
+    // Try to allocate the slice only if it's not already allocated *for this slice*
+    // (It might be allocated if the other channel on the same slice is already in use)
+    bool needs_allocation = !slice.isGpioChannelUsed(PWM_CHAN_A) && !slice.isGpioChannelUsed(PWM_CHAN_B);
+    if (needs_allocation) {
+        if (!allocate_pwm_slice(sliceNb)) {
+             response[5] = 0x02; // Error: Slice is busy (used by another interface like FreqMeter)
+             return CmdStatus::NOK;
+        }
+        // Allocation successful (or was already allocated by the other channel of this slice)
+    }
+    // --- End Resource Allocation ---
+
+    // If allocation successful or slice already used by the *other* channel of this PWM instance
     gpio_set_function(gpio, GPIO_FUNC_PWM);
-    slice.setGpioChannel(channel, gpio);
+    slice.setGpioChannel(channel, gpio); // Mark channel as used within this instance
     return CmdStatus::OK;
 }
 
@@ -74,12 +96,19 @@ CmdStatus Pwm::deInitPwm(uint8_t const *cmd) {
 
     Slice &slice = _sliceArray[sliceNb];
     if(slice.isGpioChannelUsed(channel)) {
-        slice.unsetGpioChannel(channel);
+        slice.unsetGpioChannel(channel); // Mark channel as unused within this instance
     }
 
+    // If the slice is now completely free (neither channel A nor B used by this PWM instance)
     if(slice.isFree()) {
-       pwm_set_enabled(sliceNb, false);
+       pwm_set_enabled(sliceNb, false); // Disable PWM hardware for the slice
+       // --- Resource Release ---
+       release_pwm_slice(sliceNb); // Release the slice in the global manager
+       // --- End Resource Release ---
+       slice.isFreqComputed = false; // Reset frequency computation flag
     }
+
+    // If the channel wasn't used, do nothing.
 
     return CmdStatus::OK;
 }

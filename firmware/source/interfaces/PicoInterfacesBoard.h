@@ -202,6 +202,16 @@ namespace Report {
         // | HUB75_WRITE | NB_BYTES[4] L.Endian (WIDTH * HEIGHT)| => First | HUB75_WRITE | CmdStatus::OK|NOK | 
         // ... and after the CDC stream (when transfer to led starting) | HUB75_WRITE | CmdStatus::OK |
         HUB75_WRITE = 0xD2,
+
+       // FREQ_METER (using PWM Input) 0xE0 - 0xEF
+        // | FREQ_METER_INIT | GP NUMBER | => | FREQ_METER_INIT | CmdStatus::OK|NOK | GP NUMBER | err: 0x01: Pin/Slice busy, 0x02: No DMA channel |
+        FREQ_METER_INIT = 0xE0,
+        // | FREQ_METER_DEINIT | GP NUMBER | => | FREQ_METER_DEINIT | CmdStatus::OK | GP NUMBER |
+        FREQ_METER_DEINIT = 0xE1,
+        // | FREQ_METER_START | GP NUMBER | => | FREQ_METER_START | CmdStatus::OK|NOK | GP NUMBER | err: 0x01: Not initialized |
+        FREQ_METER_START = 0xE2,
+        // | FREQ_METER_GET_PERIOD_TICKS | GP NUMBER | => | FREQ_METER_GET_PERIOD_TICKS | CmdStatus::OK|NOK | GP NUMBER | PERIOD_TICKS[4] L.Endian | err: 0x01: Not initialized, 0x02: Measurement error/timeout |
+        FREQ_METER_GET_PERIOD_TICKS = 0xE3,
     };
 }
 

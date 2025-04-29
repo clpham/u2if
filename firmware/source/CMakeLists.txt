@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 
 # Set PICO_SDK_PATH to parent directory
-get_filename_component(PICO_SDK_PATH "${CMAKE_CURRENT_LIST_DIR}/../pico-sdk" ABSOLUTE)
+#get_filename_component(PICO_SDK_PATH "${CMAKE_CURRENT_LIST_DIR}/../pico-sdk" ABSOLUTE)
 
 # initialize the SDK based on PICO_SDK_PATH
 # note: this must happen before project()
@@ -48,6 +48,9 @@ if (NOT DEFINED HUB75_MAX_LEDS)
         set(HUB75_MAX_LEDS 128*64)
 endif()
 
+if (NOT DEFINED FREQ_METER_ENABLED)
+    set(FREQ_METER_ENABLED 1)
+endif()
 
 configure_file("${PROJECT_SOURCE_DIR}/board_config.h.in" "${PROJECT_SOURCE_DIR}/board_config.h")
 

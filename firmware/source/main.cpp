@@ -25,10 +25,60 @@ extern "C" {
 #include "interfaces/I2s.h"
 #include "interfaces/Hub75.h"
 #include "interfaces/GroupGpio.h"
+//#if FREQ_METER_ENABLED // Include FreqMeter header conditionally
+#include "interfaces/FreqMeter.h"
+//#endif
+#include "hardware/pwm.h" // Needed for NUM_PWM_SLICES
 
 
 void sendOrSaveResponse(uint8_t response[64]);
 void sendSavedResponses();
+
+// --- PWM Slice Resource Management ---
+// Each bit corresponds to a PWM slice (0-7). 1 = busy, 0 = free.
+static uint8_t g_pwm_slice_allocation_mask = 0;
+
+/**
+ * @brief Checks if a specific PWM slice is currently allocated.
+ *
+ * @param slice_num The PWM slice number (0-7).
+ * @return true if the slice is allocated, false otherwise.
+ */
+bool is_pwm_slice_busy(uint slice_num) {
+    if (slice_num >= NUM_PWM_SLICES) {
+        return true; // Invalid slice number, treat as busy
+    }
+    return (g_pwm_slice_allocation_mask >> slice_num) & 1u;
+}
+
+/**
+ * @brief Attempts to allocate a PWM slice.
+ *
+ * @param slice_num The PWM slice number (0-7).
+ * @return true if allocation was successful, false if the slice was already busy.
+ */
+bool allocate_pwm_slice(uint slice_num) {
+    if (slice_num >= NUM_PWM_SLICES) {
+        return false; // Invalid slice number
+    }
+    if (is_pwm_slice_busy(slice_num)) {
+        return false; // Already allocated
+    }
+    g_pwm_slice_allocation_mask |= (1u << slice_num);
+    return true;
+}
+
+/**
+ * @brief Releases a previously allocated PWM slice.
+ *
+ * @param slice_num The PWM slice number (0-7).
+ */
+void release_pwm_slice(uint slice_num) {
+    if (slice_num < NUM_PWM_SLICES) {
+        g_pwm_slice_allocation_mask &= ~(1u << slice_num);
+    }
+}
+// --- End PWM Slice Resource Management ---
 
 
 // ModeActivity
@@ -85,7 +135,12 @@ static I2s i2s(4000, 5);
 static Hub75 hub75(HUB75_MAX_LEDS*4);
 #endif
 
-static std::vector<BaseInterface*> interfaces = { 
+#if FREQ_METER_ENABLED // Instantiate FreqMeter conditionally
+static FreqMeter freqMeter;
+#endif
+
+// Add interface pointers to this vector
+static std::vector<BaseInterface*> interfaces = {
 &gpio
 , &group_gpio
 #if I2C0_ENABLED
@@ -120,6 +175,9 @@ static std::vector<BaseInterface*> interfaces = {
 #endif
 #if HUB75_ENABLED
 , &hub75
+#endif
+#if FREQ_METER_ENABLED // Add FreqMeter to the vector conditionally
+, &freqMeter
 #endif
 , &sys
 };
@@ -158,6 +216,7 @@ int main(void) {
     }
 }
 
+// Process incoming HID command report
 bool processCmd(uint8_t const *buffer, uint16_t bufsize){
     if(bufsize != 64)
         return false;
