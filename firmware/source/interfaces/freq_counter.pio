@@ -1,0 +1,138 @@
+; File: firmware/source/interfaces/freq_counter.pio
+.program freq_counter
+; Measures high pulse duration and low pulse duration of a signal on 'in' pin.
+; Pushes high duration remainder, then low duration remainder.
+; Assumes input pin is mapped to 'in base'.
+
+entry_point:
+    mov x, ~null        ; Initialize counter X for high duration (0xFFFFFFFF)
+
+    ; Wait for first low level
+    wait 0 pin 0        ; Synchronizing ...
+    ; Wait for first rising edge
+    wait 1 pin 0        ; Synchronizing ...
+    ; Wait for 2nd low level
+    wait 0 pin 0        ; Synchronizing ...
+
+    ; Wait for 2nd rising edge
+    wait 1 pin 0        ; Actual start
+
+wait_falling_edge:
+    ; @High level, x-- cycle count = 1
+    jmp x-- check_still_high  ; Decrement X
+check_still_high:
+    ; @High level, x-- cycle count = 2
+    jmp pin wait_falling_edge ; If pin is still high, loop (high level, cycle #2)
+
+    ; Pin is low (falling edge detected) - JMP pin failed
+    ; @Low level, extra cycle count = 1
+    mov isr, ~x         ; Store remaining count for high time (0xFFFFFFFF - high_cycles)
+    ; @Low level, extra cycle count = 2
+    push noblock        ; Push high time result to RX FIFO
+
+    ; @Low level, extra cycle count = 3
+    mov x, ~null        ; Initialize counter X for low duration (0xFFFFFFFF)
+wait_rising_edge:
+    ; @Low level, x-- cycle count = 1
+    jmp x-- check_still_low ; Decrement X (takes 1 cycle)
+check_still_low:
+    ; @Low level, x-- cycle count = 2
+    jmp pin wait_rising_edge_end ; If pin went high, JMP succeeds, go to end
+    ; @Low level, x-- cycle count = 3
+    jmp wait_rising_edge      ; If pin is still low, loop (takes 1 cycle)
+wait_rising_edge_end:
+    ; Pin is high (rising edge detected) - JMP pin succeeded
+
+    mov isr, ~x          ; Store remaining count for high time (0xFFFFFFFF - low_cycles)
+    push noblock        ; Push low time result to RX FIFO
+
+    ;;jmp entry_point     ; Loop for continuous measurement
+
+
+% c-sdk {
+// Add guard if needed
+// #ifndef _FREQ_COUNTER_PIO_H
+// #define _FREQ_COUNTER_PIO_H
+
+#include "hardware/clocks.h"
+#include "hardware/pio.h"
+
+// Function to initialize the PIO state machine for frequency counting
+static inline void freq_counter_program_init(PIO pio, uint sm, uint offset, uint pin) {
+    // Initialize the GPIO pin for PIO control
+    pio_gpio_init(pio, pin);
+    // Set the pin direction to input within the PIO
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false); // false = input
+
+    // Get the default PIO state machine configuration
+    pio_sm_config c = freq_counter_program_get_default_config(offset);
+
+    // Map the state machine's IN pins to the selected GPIO pin.
+    sm_config_set_in_pins(&c, pin);
+    // Map the JMP pin to the selected GPIO pin (used by 'jmp pin')
+    sm_config_set_jmp_pin(&c, pin);
+
+    // Set the clock divider. We want maximum resolution, so divider is 1.
+    // PIO runs at system clock speed.
+    sm_config_set_clkdiv(&c, 1.0f);
+
+    // Configure shift registers:
+    // - IN shift: Right shift disabled (false), Autopush disabled (false), Threshold 32 bits.
+    //   We use manual 'push' instructions.
+    sm_config_set_in_shift(&c, false, false, 32);
+    // - OUT shift: Not used by this program.
+    sm_config_set_out_shift(&c, false, false, 0);
+
+    // Load the configuration into the state machine
+    pio_sm_init(pio, sm, offset, &c);
+
+    //// Enable the state machine
+    ////pio_sm_set_enabled(pio, sm, true);
+}
+
+// Function to get a single blocking measurement (high and low remainders)
+// Clears FIFO before starting.
+static inline void freq_counter_get_measurement_blocking(PIO pio, uint sm, uint32_t *high_rem, uint32_t *low_rem) {
+    // Clear any stale data in the RX FIFO
+    pio_sm_clear_fifos(pio, sm);
+    // Enable the state machine
+    pio_sm_set_enabled(pio, sm, true);
+
+    // Read the two 32-bit values pushed by the PIO program
+    // These are blocking calls.
+
+    uint32_t high_cycles_raw = pio_sm_get_blocking(pio, sm);
+    uint32_t low_cycles_raw = pio_sm_get_blocking(pio, sm);
+
+    // The loop wait_falling_edge takes 2 clock cycles to decrement the x register
+    *high_rem = high_cycles_raw * 2;
+
+    // The loop wait_rising_edge takes 3 clock cycles to decrement the x register
+    // and 3 extra clock cycles
+    *low_rem = low_cycles_raw * 3 + 3;
+
+    // Disable the state machine
+    pio_sm_set_enabled(pio, sm, false);
+}
+
+// Function to calculate frequency and duty cycle from remainders and clock speed
+// Note: Perform calculations on the host (Python) side to avoid float math in firmware if possible.
+// This function is provided for completeness or potential firmware-side calculation.
+/*
+static inline void freq_counter_calculate(uint32_t high_rem, uint32_t low_rem, uint32_t sys_clk_hz, float *freq, float *duty) {
+    uint32_t high_cycles = high_rem;
+    uint32_t low_cycles = low_rem;
+    uint32_t total_cycles = high_cycles + low_cycles;
+
+    if (total_cycles == 0 || sys_clk_hz == 0) {
+        *freq = 0.0f;
+        *duty = 0.0f; // Or NaN? Or indicate error?
+    } else {
+        *freq = (float)sys_clk_hz / total_cycles;
+        *duty = (float)high_cycles * 100.0f / total_cycles;
+    }
+}
+*/
+
+// #endif // _FREQ_COUNTER_PIO_H
+%}

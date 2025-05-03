@@ -1,5 +1,6 @@
 # From PicoInterfacesBoard.h
 
+
 class u2if:
     # GPIO
     GP0 = 0
@@ -211,3 +212,11 @@ HUB75_DEINIT = 0xD1
 # | HUB75_WRITE | NB_BYTES[4] L.Endian (WIDTH * HEIGHT)| => First | HUB75_WRITE | CmdStatus::OK|NOK |
 # ... and after the CDC stream (when transfer to led starting) | HUB75_WRITE | CmdStatus::OK |
 HUB75_WRITE = 0xD2
+
+# FREQ COUNTER: 0xEX
+# | FREQ_COUNTER_INIT | GP NUMBER | => | FREQ_COUNTER_INIT | CmdStatus::OK/NOK | GP NUMBER | err: 0x01=No PIO SM available, 0x02=Pin already used |
+FREQ_COUNTER_INIT = 0xE0
+# | FREQ_COUNTER_DEINIT | GP NUMBER | => | FREQ_COUNTER_DEINIT | CmdStatus::OK/NOK | GP NUMBER |
+FREQ_COUNTER_DEINIT = 0xE1
+# | FREQ_COUNTER_GET_MEASUREMENT | GP NUMBER | => | FREQ_COUNTER_GET_MEASUREMENT | CmdStatus::OK/NOK | GP NUMBER | HIGH_CYCLES[4] L.Endian | LOW_CYCLES[4] L.Endian | err: 0x01=Timeout/No signal? |
+FREQ_COUNTER_GET_MEASUREMENT = 0xE2

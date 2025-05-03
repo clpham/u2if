@@ -24,14 +24,14 @@ function build {
 
 
 mkdir -p $RELEASE_DIR
-build pico_i2s PICO 1 1 1000 0
+#build pico_i2s PICO 1 1 1000 0
 build pico_hub75 PICO 0 1 1000 1
-build feather FEATHER 0 0 1000 0
-build itsybitsy ITSYBITSY 0 0 1000 0
-build qtpy QTPY 0 0 1000 0
-build qt2040_trinkey QT2040_TRINKEY 0 0 1000 0
-build feather_epd FEATHER_EPD 0 1 1000 0
-build feather_rfm FEATHER_RFM 0 1 1000 0
-build feather_can FEATHER_CAN 0 1 1000 0
-build kb2040 KB2040 0 1 1000 0
+#build feather FEATHER 0 0 1000 0
+#build itsybitsy ITSYBITSY 0 0 1000 0
+#build qtpy QTPY 0 0 1000 0
+#build qt2040_trinkey QT2040_TRINKEY 0 0 1000 0
+#build feather_epd FEATHER_EPD 0 1 1000 0
+#build feather_rfm FEATHER_RFM 0 1 1000 0
+#build feather_can FEATHER_CAN 0 1 1000 0
+#build kb2040 KB2040 0 1 1000 0
 

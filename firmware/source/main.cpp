@@ -25,6 +25,7 @@ extern "C" {
 #include "interfaces/I2s.h"
 #include "interfaces/Hub75.h"
 #include "interfaces/GroupGpio.h"
+#include "interfaces/FreqCounter.h"
 
 
 void sendOrSaveResponse(uint8_t response[64]);
@@ -85,6 +86,10 @@ static I2s i2s(4000, 5);
 static Hub75 hub75(HUB75_MAX_LEDS*4);
 #endif
 
+#if FREQ_COUNTER_ENABLED
+static FreqCounter freqCounter;
+#endif
+
 static std::vector<BaseInterface*> interfaces = { 
 &gpio
 , &group_gpio
@@ -120,6 +125,9 @@ static std::vector<BaseInterface*> interfaces = {
 #endif
 #if HUB75_ENABLED
 , &hub75
+#endif
+#if FREQ_COUNTER_ENABLED
+, &freqCounter
 #endif
 , &sys
 };

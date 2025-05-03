@@ -262,6 +262,8 @@
   #define U2IF_I2S_SD  12
   // HUB75
   #define HUB75_ENABLED  HUB75_ALLOW
+  // FREQCOUNTER
+  #define FREQ_COUNTER_ENABLED 1
 
 #else
   #warning "Please define board type"

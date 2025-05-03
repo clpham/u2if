@@ -43,6 +43,7 @@ The following features are coded:
 * I2S
 * WS2812B led (https://youtu.be/WCGI4C6nZ-o)
 * HUB75 (https://youtu.be/qRShI9y964Q)
+* machine.FreqCounter
 
 
 ## Licenses and Project directories
@@ -105,6 +106,7 @@ Implemented interfaces:
  - SPI0 & SPI1
  - WS2812B
  - I2S
+ - FreqCounter
 
 </details>
 
