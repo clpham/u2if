@@ -29,7 +29,6 @@
 #define WS2812_ENABLED      ${WS2812_ENABLED}
 #define WS2812_SIZE         ${WS2812_SIZE}      // 0 to disable WS2812B interface
 #define HUB75_MAX_LEDS      ${HUB75_MAX_LEDS}
-#define FREQ_METER_ENABLED  ${FREQ_METER_ENABLED}
 
 //---------------------------------------------------------
 // Feather

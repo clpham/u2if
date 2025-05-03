@@ -11,7 +11,6 @@ from .ws2812b import WS2812B
 from .hub75 import HUB75
 from .u2if_const import u2if
 from .u2if import Device
-from .freqmeter import FreqMeter
 
 
 def select_interface(sn):
@@ -26,3 +25,4 @@ def unique_id():
 def firmware_version():
     device = Device()
     return device.get_firmware_version()
+
