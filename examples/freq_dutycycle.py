@@ -1,35 +1,44 @@
-# File: examples/freq_counter_test.py
+# File: examples/freq_dutycycle.py
 import time
 import machine
-from machine import u2if, Pin, PWM, FreqCounter
+from machine import u2if, Pin, PWM, FreqCounter, Signal
 
-# # # --- Configuration ---
-# # PWM_PIN_ID = u2if.GP15  # Choose a PWM-capable pin
-# # FREQ_HZ = 1000  # 1 kHz
-# # DUTY_PERCENT = 25.0  # 25% duty cycle
-# # # ---------------------
+# --- Configuration ---
+PWM_PIN_ID = u2if.GP16  # Choose a PWM-capable pin
+FREQ_HZ = 45  # Hz
+DUTY_PERCENT = 50.0  # % duty cycle
+# ---------------------
+
+
+def blink_led(signal: Signal, on_time: float = 0.01) -> None:
+    signal.on()
+    time.sleep(on_time)
+    signal.off()
+
 
 v0, v1, v2 = machine.firmware_version()
 fwver = f"{v0}.{v1}.{v2}"
 print(f"u2if Firmware version: {fwver}")
 print("u2if Frequency Counter Test")
 
-# # # # Setup PWM output
-# # # print(f"Setting up PWM on pin {PWM_PIN_ID} at {FREQ_HZ} Hz, {DUTY_PERCENT}% duty cycle")
-# # # pwm_pin = Pin(PWM_PIN_ID)
-# # # pwm = PWM(pwm_pin)
-# # # pwm.freq(FREQ_HZ)
-# # # # Convert duty cycle percentage to 16-bit value (0-65535)
-# # # duty_u16 = int((DUTY_PERCENT / 100.0) * 65535)
-# # # pwm.duty_u16(duty_u16)
-# # # print("PWM setup complete.")
-# # # time.sleep(0.5)  # Allow PWM to stabilize
+# Setup PWM output
+print(f"Setting up PWM on pin {PWM_PIN_ID} at {FREQ_HZ} Hz, {DUTY_PERCENT}% duty cycle")
+pwm_pin = Pin(PWM_PIN_ID)
+pwm = PWM(pwm_pin)
+pwm.freq(FREQ_HZ)
+# Convert duty cycle percentage to 16-bit value (0-65535)
+duty_u16 = int((DUTY_PERCENT / 100.0) * 65535)
+pwm.duty_u16(duty_u16)
+print("PWM setup complete.")
+time.sleep(0.5)  # Allow PWM to stabilize
 
-# # # Setup Frequency Counter on the same pin
+# # # Setup Frequency Counter
 # # print(f"Initializing Frequency Counter on pin {PWM_PIN_ID}")
 FREQ_COUNTER_PIN = u2if.GP15
+LED_PIN = u2if.GP25
 print(f"Initializing Frequency Counter on pin {FREQ_COUNTER_PIN}")
 try:
+    led = Signal(Pin(LED_PIN, Pin.OUT), invert=False)
     fc = FreqCounter(FREQ_COUNTER_PIN)
     print("Frequency Counter initialized.")
 
@@ -40,6 +49,7 @@ try:
         elapsed_time = end_time - start_time
         try:
             freq, duty = fc.measure()
+            blink_led(led)
             print(
                 f"Measured: Freq = {freq:.2f} Hz, Duty = {duty:.2f} %, Elapsed time = {int(elapsed_time):,}s"
             )
